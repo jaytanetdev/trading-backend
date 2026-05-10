@@ -52,13 +52,18 @@ export class StockService {
   async getDailyCandles(symbol: string): Promise<Candle[]> {
     const key = `candles:${symbol}`;
     const cached = await this.redis.get<Candle[]>(key);
-    if (cached) return cached;
+    if (cached) {
+      this.logger.log(`[cache hit] candles:${symbol} (${cached.length} rows)`);
+      return cached;
+    }
 
+    this.logger.log(`[yahoo] chart ${symbol} — fetching...`);
     const result = (await yf.chart(
       symbol,
       { period1: '1970-01-01', interval: '1d' },
       { validateResult: false },
     )) as { quotes: Array<Record<string, unknown>> };
+    this.logger.log(`[yahoo] chart ${symbol} — got ${result.quotes?.length ?? 0} raw rows`);
 
     const out: Candle[] = [];
     for (const row of result.quotes) {
@@ -89,9 +94,14 @@ export class StockService {
   async getQuote(symbol: string): Promise<Quote> {
     const key = `quote:${symbol}`;
     const cached = await this.redis.get<Quote>(key);
-    if (cached) return cached;
+    if (cached) {
+      this.logger.log(`[cache hit] quote:${symbol} price=${cached.price}`);
+      return cached;
+    }
 
+    this.logger.log(`[yahoo] quote ${symbol} — fetching...`);
     const q = await yf.quote(symbol, undefined, { validateResult: false });
+    this.logger.log(`[yahoo] quote ${symbol} — price=${q?.regularMarketPrice ?? 'N/A'}`);
     if (!q || q.regularMarketPrice == null) {
       throw new NotFoundException(`Quote not found for ${symbol}`);
     }
@@ -117,7 +127,11 @@ export class StockService {
   async getStock(symbol: string): Promise<StockResponse> {
     const key = `stock:${symbol}`;
     const cached = await this.redis.get<StockResponse>(key);
-    if (cached) return cached;
+    if (cached) {
+      this.logger.log(`[cache hit] stock:${symbol}`);
+      return cached;
+    }
+    this.logger.log(`[cache miss] stock:${symbol} — building from Yahoo Finance`);
 
     const [candles, quote] = await Promise.all([
       this.getDailyCandles(symbol),
@@ -147,8 +161,12 @@ export class StockService {
   async getOverview(symbol: string): Promise<CompanyOverview> {
     const key = `overview:${symbol}`;
     const cached = await this.redis.get<CompanyOverview>(key);
-    if (cached) return cached;
+    if (cached) {
+      this.logger.log(`[cache hit] overview:${symbol}`);
+      return cached;
+    }
 
+    this.logger.log(`[yahoo] quoteSummary ${symbol} — fetching...`);
     const summary = (await yf.quoteSummary(
       symbol,
       {
@@ -172,6 +190,7 @@ export class StockService {
     const fin = (summary.financialData ?? {}) as Record<string, unknown>;
     const price = (summary.price ?? {}) as Record<string, unknown>;
 
+    this.logger.log(`[yahoo] quoteSummary ${symbol} — got response`);
     if (!price.symbol && !detail.marketCap) {
       throw new NotFoundException(`Overview not found for ${symbol}`);
     }
@@ -252,8 +271,12 @@ export class StockService {
   async getNews(symbol: string, limit = 10): Promise<NewsItem[]> {
     const key = `news:${symbol}:${limit}`;
     const cached = await this.redis.get<NewsItem[]>(key);
-    if (cached) return cached;
+    if (cached) {
+      this.logger.log(`[cache hit] news:${symbol} (${cached.length} items)`);
+      return cached;
+    }
 
+    this.logger.log(`[yahoo] search news ${symbol} — fetching...`);
     const result = (await yf.search(
       symbol,
       { newsCount: limit, quotesCount: 0 },
@@ -268,6 +291,7 @@ export class StockService {
       }>;
     };
 
+    this.logger.log(`[yahoo] search news ${symbol} — got ${result.news?.length ?? 0} items`);
     const out: NewsItem[] = (result.news ?? []).slice(0, limit).map((n) => {
       const t = n.providerPublishTime;
       const published =
@@ -293,14 +317,19 @@ export class StockService {
   async searchSymbols(keyword: string): Promise<SearchResult[]> {
     const key = `search:${keyword.toLowerCase()}`;
     const cached = await this.redis.get<SearchResult[]>(key);
-    if (cached) return cached;
+    if (cached) {
+      this.logger.log(`[cache hit] search:${keyword} (${cached.length} results)`);
+      return cached;
+    }
 
+    this.logger.log(`[yahoo] search symbols "${keyword}" — fetching...`);
     const result = (await yf.search(
       keyword,
       { quotesCount: 10, newsCount: 0 },
       { validateResult: false },
     )) as { quotes?: unknown[] };
 
+    this.logger.log(`[yahoo] search symbols "${keyword}" — got ${(result as { quotes?: unknown[] }).quotes?.length ?? 0} results`);
     const out: SearchResult[] = [];
     for (const q of result.quotes ?? []) {
       const anyQ = q as Record<string, unknown>;
@@ -323,7 +352,11 @@ export class StockService {
   async getRecommendations(): Promise<Recommendation[]> {
     const key = 'movers';
     const cached = await this.redis.get<Recommendation[]>(key);
-    if (cached) return cached;
+    if (cached) {
+      this.logger.log(`[cache hit] movers (${cached.length} items)`);
+      return cached;
+    }
+    this.logger.log(`[yahoo] screener movers — fetching...`);
 
     const runScreener = async (
       scrId: 'day_gainers' | 'day_losers' | 'most_actives',
@@ -348,6 +381,7 @@ export class StockService {
       runScreener('most_actives', 5),
       runScreener('day_losers', 3),
     ]);
+    this.logger.log(`[yahoo] screener movers — gainers=${gainers.length} actives=${actives.length} losers=${losers.length}`);
 
     const out: Recommendation[] = [];
     const push = (
