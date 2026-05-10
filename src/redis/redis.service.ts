@@ -1,24 +1,35 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: Redis;
+  private readonly logger = new Logger(RedisService.name);
 
   constructor(private readonly config: ConfigService) {}
 
   onModuleInit() {
     const redisUrl = this.config.get<string>('REDIS_URL') ?? 'redis://localhost:6379';
+    const safeUrl = redisUrl.replace(/:\/\/[^@]+@/, '://***@');
+    this.logger.log(`Connecting to Redis: ${safeUrl}`);
+
     this.client = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,
       enableReadyCheck: false,
       lazyConnect: true,
     });
 
+    this.client.on('connect', () => this.logger.log('Redis connected'));
+    this.client.on('ready', () => this.logger.log('Redis ready'));
+    this.client.on('close', () => this.logger.warn('Redis connection closed'));
+    this.client.on('reconnecting', (ms: number) => this.logger.warn(`Redis reconnecting in ${ms}ms`));
     this.client.on('error', (err) => {
-      // Log but don't crash — gracefully degrade if Redis is unavailable
-      console.warn('Redis connection error (cache disabled):', err.message);
+      this.logger.error(`Redis error: ${err.message}`);
+    });
+
+    this.client.connect().catch((err) => {
+      this.logger.error(`Redis initial connect failed: ${err.message}`);
     });
   }
 
