@@ -20,6 +20,15 @@ const TTL = {
   RECOMMENDATIONS: 10,
 };
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout: ${label} exceeded ${ms}ms`)), ms),
+    ),
+  ]);
+}
+
 function num(v: unknown): number {
   if (v == null) return NaN;
   const n = typeof v === 'number' ? v : parseFloat(String(v));
@@ -58,10 +67,10 @@ export class StockService {
     }
 
     this.logger.log(`[yahoo] chart ${symbol} — fetching...`);
-    const result = (await yf.chart(
-      symbol,
-      { period1: '1970-01-01', interval: '1d' },
-      { validateResult: false },
+    const result = (await withTimeout(
+      yf.chart(symbol, { period1: '1970-01-01', interval: '1d' }, { validateResult: false }),
+      8000,
+      `chart ${symbol}`,
     )) as { quotes: Array<Record<string, unknown>> };
     this.logger.log(`[yahoo] chart ${symbol} — got ${result.quotes?.length ?? 0} raw rows`);
 
@@ -100,7 +109,11 @@ export class StockService {
     }
 
     this.logger.log(`[yahoo] quote ${symbol} — fetching...`);
-    const q = await yf.quote(symbol, undefined, { validateResult: false });
+    const q = await withTimeout(
+      yf.quote(symbol, undefined, { validateResult: false }),
+      8000,
+      `quote ${symbol}`,
+    );
     this.logger.log(`[yahoo] quote ${symbol} — price=${q?.regularMarketPrice ?? 'N/A'}`);
     if (!q || q.regularMarketPrice == null) {
       throw new NotFoundException(`Quote not found for ${symbol}`);
@@ -167,18 +180,14 @@ export class StockService {
     }
 
     this.logger.log(`[yahoo] quoteSummary ${symbol} — fetching...`);
-    const summary = (await yf.quoteSummary(
-      symbol,
-      {
-        modules: [
-          'assetProfile',
-          'summaryDetail',
-          'defaultKeyStatistics',
-          'financialData',
-          'price',
-        ],
-      },
-      { validateResult: false },
+    const summary = (await withTimeout(
+      yf.quoteSummary(
+        symbol,
+        { modules: ['assetProfile', 'summaryDetail', 'defaultKeyStatistics', 'financialData', 'price'] },
+        { validateResult: false },
+      ),
+      8000,
+      `quoteSummary ${symbol}`,
     )) as Record<string, Record<string, unknown> | undefined>;
 
     const profile = (summary.assetProfile ?? {}) as Record<string, unknown>;
