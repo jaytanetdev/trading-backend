@@ -1,0 +1,25 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model WatchlistItem {
+  id       Int      @id @default(autoincrement())
+  clientId String
+  symbol   String
+  addedAt  DateTime @default(now())
+
+  @@unique([clientId, symbol])
+}
+
+model WatchlistEvent {
+  id        Int      @id @default(autoincrement())
+  clientId  String
+  symbol    String
+  action    String
+  createdAt DateTime @default(now())
+}

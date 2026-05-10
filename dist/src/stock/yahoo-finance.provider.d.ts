@@ -1,0 +1,20 @@
+import YahooFinance from 'yahoo-finance2';
+declare const yf: import("yahoo-finance2/createYahooFinance").YahooFinance & {
+    readonly quoteCombine: typeof import("yahoo-finance2/other").quoteCombine;
+    readonly autoc: typeof import("yahoo-finance2/modules").autoc;
+    readonly chart: typeof import("yahoo-finance2/modules").chart;
+    readonly dailyGainers: typeof import("yahoo-finance2/modules").dailyGainers;
+    readonly dailyLosers: typeof import("yahoo-finance2/modules").dailyLosers;
+    readonly fundamentalsTimeSeries: typeof import("yahoo-finance2/modules").fundamentalsTimeSeries;
+    readonly historical: typeof import("yahoo-finance2/modules").historical;
+    readonly insights: typeof import("yahoo-finance2/modules").insights;
+    readonly options: typeof import("yahoo-finance2/modules").options;
+    readonly quote: typeof import("yahoo-finance2/modules").quote;
+    readonly quoteSummary: typeof import("yahoo-finance2/modules").quoteSummary;
+    readonly recommendationsBySymbol: typeof import("yahoo-finance2/modules").recommendationsBySymbol;
+    readonly screener: typeof import("yahoo-finance2/modules").screener;
+    readonly search: typeof import("yahoo-finance2/modules").search;
+    readonly trendingSymbols: typeof import("yahoo-finance2/modules").trendingSymbols;
+};
+export { yf as yahooFinance };
+export type { YahooFinance };
