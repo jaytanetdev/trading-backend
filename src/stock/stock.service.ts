@@ -13,11 +13,11 @@ import {
 import { yahooFinance as yf } from './yahoo-finance.provider';
 
 const TTL = {
-  STOCK: 15 * 60, // 15 minutes (Yahoo updates every 15 min)
-  OVERVIEW: 24 * 60 * 60, // 24 hours
-  NEWS: 60 * 60, // 1 hour
-  SEARCH: 5 * 60, // 5 minutes
-  RECOMMENDATIONS: 2 * 60 * 60, // 2 hours
+  STOCK: 10,
+  OVERVIEW: 10,
+  NEWS: 10,
+  SEARCH: 10,
+  RECOMMENDATIONS: 10,
 };
 
 function num(v: unknown): number {
