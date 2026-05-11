@@ -13,11 +13,11 @@ import {
 import { yahooFinance as yf } from './yahoo-finance.provider';
 
 const TTL = {
-  STOCK: 10,
-  OVERVIEW: 10,
-  NEWS: 10,
-  SEARCH: 10,
-  RECOMMENDATIONS: 10,
+  STOCK: 60,           // quote + candles: refresh ทุก 1 นาที
+  OVERVIEW: 3600,      // ข้อมูลบริษัท: refresh ทุก 1 ชั่วโมง
+  NEWS: 300,           // ข่าว: refresh ทุก 5 นาที
+  SEARCH: 300,         // ผลค้นหา: refresh ทุก 5 นาที
+  RECOMMENDATIONS: 120, // market movers: refresh ทุก 2 นาที
 };
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
