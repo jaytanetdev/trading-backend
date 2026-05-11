@@ -28,9 +28,11 @@ function buildFetch(): typeof fetch | undefined {
     const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
     const matched = YAHOO_ORIGINS.find((o) => raw.startsWith(o));
     if (matched) {
-      const proxied = PROXY_URL + raw.slice(matched.length);
+      const originHost = matched.replace('https://', '');          // "finance.yahoo.com"
+      const pathAfterOrigin = raw.slice(matched.length);           // "/quote/AAPL"
+      const proxied = `${PROXY_URL}/${originHost}${pathAfterOrigin}`; // correct Worker path
       const headers = new Headers(init?.headers);
-      headers.set('X-Yahoo-Origin', matched.replace('https://', ''));
+      headers.set('X-Yahoo-Origin', originHost);
       return globalThis.fetch(proxied, { ...init, headers });
     }
     return globalThis.fetch(input, init);
